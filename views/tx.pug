@@ -121,4 +121,18 @@ block content
                   tr.d-sm-block.d-md-none.d-none
                     td.table-success #{ramountParts[0]}.
                             span.decimal #{ramountParts[1]} #{settings.symbol}
+                  if r.nameOp
+                    tr.nameop-row
+                      td(colspan='2')
+                        span.badge.badge-info #{r.nameOp.op}
+                        |  
+                        strong #{r.nameOp.name || r.nameOp.name_error}
+                        if r.nameOp.hash
+                          |  
+                          small.text-muted hash: #{r.nameOp.hash}
+                        if r.nameOp.rand
+                          |  
+                          small.text-muted rand: #{r.nameOp.rand}
+                        if r.nameOp.value || r.nameOp.value_error
+                          pre.nameop-value(style='max-height:12em;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:.4em 0 0;padding:.5em;font-size:.85em') #{r.nameOp.value || r.nameOp.value_error}
     .footer-padding
