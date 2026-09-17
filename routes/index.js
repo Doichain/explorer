@@ -233,6 +233,17 @@ router.get('/block/:hash', function(req, res) {
   route_get_block(res, req.params.hash);
 });
 
+// A name in the URL, the way a transaction or a block has one: /name/<name>.
+//
+// A wildcard rather than :name, because names carry slashes -- the registration
+// test/v31.1.4-canary-20260913 is a single name, and a path parameter stops at
+// the first slash. Express decodes the match, so the percent-encoded form
+// /name/test%2Fv31.1.4-canary-20260913 arrives as the same string and both
+// spellings lead to the same place.
+router.get('/name/*', function(req, res) {
+  route_get_name(res, req.params[0]);
+});
+
 router.get('/address/:hash/claim', function(req,res){
   route_get_claim_form(res, req.params.hash);
 });
@@ -255,15 +266,20 @@ router.get('/address/:hash/:count', function(req, res) {
 //
 // If ElectrumX is unreachable the user sees the ordinary "not found" message:
 // a search box is the wrong place to report an infrastructure fault.
-function search_name(res, query) {
-  names.lookup(query, function(err, hit) {
+function route_get_name(res, name) {
+  if (!name) return route_get_index(res, locale.ex_search_error + name);
+  names.lookup(name, function(err, hit) {
     if (err) {
-      console.error('name search failed for "' + query + '": ' + err.message);
-      return route_get_index(res, locale.ex_search_error + query);
+      console.error('name lookup failed for "' + name + '": ' + err.message);
+      return route_get_index(res, locale.ex_search_error + name);
     }
     if (hit) return res.redirect('/tx/' + hit.txid);
-    route_get_index(res, locale.ex_search_error + query);
+    route_get_index(res, locale.ex_search_error + name);
   });
+}
+
+function search_name(res, query) {
+  route_get_name(res, query);
 }
 
 router.post('/search', function(req, res) {
