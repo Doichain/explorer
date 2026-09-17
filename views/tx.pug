@@ -121,4 +121,98 @@ block content
                   tr.d-sm-block.d-md-none.d-none
                     td.table-success #{ramountParts[0]}.
                             span.decimal #{ramountParts[1]} #{settings.symbol}
+                  if r.nameOp
+                    tr.nameop-row
+                      td(colspan='2')
+                        span.badge.badge-info #{r.nameOp.op}
+                        |  
+                        strong #{r.nameOp.name || r.nameOp.name_error}
+                        if r.nameOp.name
+                          |
+                          button.btn.btn-sm.btn-link.name-share(type='button', data-name=r.nameOp.name, title='Share link to this name', aria-label='Share link to this name', style='padding:0 .35em;vertical-align:baseline;')
+                            span.fa.fa-share-alt(aria-hidden='true')
+                        if r.nameOp.hash
+                          |  
+                          small.text-muted hash: #{r.nameOp.hash}
+                        if r.nameOp.rand
+                          |  
+                          small.text-muted rand: #{r.nameOp.rand}
+                        if r.nameOp.value || r.nameOp.value_error
+                          pre.nameop-value(style='max-height:12em;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:.4em 0 0;padding:.5em;font-size:.85em') #{r.nameOp.value || r.nameOp.value_error}
     .footer-padding
+
+    script.
+      // The share button next to a name. Two ways out, in this order:
+      // the browser's own share sheet where there is one -- that is what
+      // actually reaches the messaging and social apps -- and the clipboard
+      // otherwise. Closing the sheet is not a failure and must not silently
+      // turn into a copy, so only a real error falls through.
+      (function () {
+        var LABEL = 'Share link to this name';
+
+        function shareUrl(name) {
+          // Slashes stay slashes: they are path separators in /name/<name> and
+          // the route puts the name back together. Everything else is encoded,
+          // so a name holding ? or # cannot cut the link short.
+          var path = name.split('/').map(encodeURIComponent).join('/');
+          return location.origin + '/name/' + path;
+        }
+
+        function flash(btn, text) {
+          var icon = btn.querySelector('.fa');
+          var previous = icon ? icon.className : null;
+          if (icon) icon.className = 'fa fa-check';
+          btn.setAttribute('title', text);
+          setTimeout(function () {
+            if (icon && previous) icon.className = previous;
+            btn.setAttribute('title', LABEL);
+          }, 1800);
+        }
+
+        function copy(url, btn) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              flash(btn, 'Link copied');
+            }, function () {
+              window.prompt('Copy this link:', url);
+            });
+            return;
+          }
+          // No clipboard API: an older browser, or a page not served over https.
+          var ta = document.createElement('textarea');
+          ta.value = url;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var copied = false;
+          try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+          document.body.removeChild(ta);
+          if (copied) flash(btn, 'Link copied');
+          else window.prompt('Copy this link:', url);
+        }
+
+        document.addEventListener('click', function (e) {
+          // The click usually lands on the icon inside the button, so walk up.
+          var el = e.target;
+          while (el && el !== document && !(el.classList && el.classList.contains('name-share'))) {
+            el = el.parentNode;
+          }
+          if (!el || el === document) return;
+          e.preventDefault();
+
+          var name = el.getAttribute('data-name');
+          if (!name) return;
+          var url = shareUrl(name);
+
+          if (navigator.share) {
+            navigator.share({ title: name, text: name, url: url }).catch(function (err) {
+              if (err && err.name === 'AbortError') return;   // sheet closed on purpose
+              copy(url, el);
+            });
+            return;
+          }
+          copy(url, el);
+        });
+      })();
