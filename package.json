@@ -8,6 +8,7 @@
     "test": "node ./node_modules/jasmine/bin/jasmine.js"
   },
   "dependencies": {
+    "@doichain/doichainjs-lib": "^6.2.0",
     "async": "^3.1.0",
     "bitcoin-core": "^2.0.0",
     "bitcoin-node-api": "git+http://git@github.com/uaktags/Bitcoin-Node-Api.git",

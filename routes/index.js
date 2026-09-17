@@ -4,6 +4,7 @@ var express = require('express')
     , locale = require('../lib/locale')
     , db = require('../lib/database')
     , lib = require('../lib/explorer')
+    , names = require('../lib/names')
     , qr = require('qr-image');
 
 function route_get_block(res, blockhash) {
@@ -244,6 +245,27 @@ router.get('/address/:hash/:count', function(req, res) {
   route_get_address(res, req.params.hash, req.params.count);
 });
 
+// Last resort of the search: treat the query as a name.
+//
+// Names are not in the explorer's database, so this asks ElectrumX's name index
+// and lands on the transaction that last operated on the name -- which shows the
+// name, its value and its block, because the transaction page renders name
+// operations. It runs only after block, transaction and address have all missed,
+// so a name that looks like a block height keeps its old meaning.
+//
+// If ElectrumX is unreachable the user sees the ordinary "not found" message:
+// a search box is the wrong place to report an infrastructure fault.
+function search_name(res, query) {
+  names.lookup(query, function(err, hit) {
+    if (err) {
+      console.error('name search failed for "' + query + '": ' + err.message);
+      return route_get_index(res, locale.ex_search_error + query);
+    }
+    if (hit) return res.redirect('/tx/' + hit.txid);
+    route_get_index(res, locale.ex_search_error + query);
+  });
+}
+
 router.post('/search', function(req, res) {
   var query = req.body.search;
   if (query.length == 64) {
@@ -258,7 +280,7 @@ router.post('/search', function(req, res) {
             if (block != 'There was an error. Check your console.') {
               res.redirect('/block/' + query);
             } else {
-              route_get_index(res, locale.ex_search_error + query );
+              search_name(res, query);
             }
           });
         }
@@ -273,7 +295,7 @@ router.post('/search', function(req, res) {
           if (hash != 'There was an error. Check your console.') {
             res.redirect('/block/' + hash);
           } else {
-            route_get_index(res, locale.ex_search_error + query );
+            search_name(res, query);
           }
         });
       }

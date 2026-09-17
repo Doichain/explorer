@@ -58,6 +58,17 @@
     "password": "123gfjk3R3pCCVjHtbRde2s5kzdf233sa"
   },
 
+  // ElectrumX, asked by the search box when a query is neither a block, a
+  // transaction nor an address: it resolves a name to the transaction holding
+  // it. Names are not in the explorer's own database. Set "enabled" to false to
+  // switch name search off.
+  "electrumx": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 50001,
+    "timeout": 8000
+  },
+
   // confirmations
   "confirmations": 40,
 
