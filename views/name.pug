@@ -1,0 +1,108 @@
+extends layout
+
+block content
+  //- Expiry follows the consensus rule: an operation at height h is expired once
+  //- the chain reaches h + expiration_depth (36000 on mainnet). The "<=" matters --
+  //- the name is expired AT that height, not one block later.
+  - var left = (nameinfo.expires_at ? nameinfo.expires_at - blockcount : null)
+  - var expired = (!nameinfo.pending && nameinfo.expires_at && blockcount >= nameinfo.expires_at)
+  //- Blocks are aimed at 10 minutes, but real intervals scatter, so this is an
+  //- estimate and is labelled as one.
+  - var days = (left === null ? null : Math.round(Math.abs(left) * 600 / 86400))
+  .col-xs-12.col-md-12
+    .card.card-default
+      .card-header(style='word-wrap:break-word;')
+        strong Name: #{nameinfo.name}
+        button.btn.btn-sm.btn-link.name-share(type='button', data-name=nameinfo.name, title='Share link to this name', aria-label='Share link to this name', style='padding:0 .35em;vertical-align:baseline;')
+          span.fa.fa-share-alt(aria-hidden='true')
+      div.table-responsive
+        table.table.table-bordered.table-striped.summary-table
+          tbody
+            tr
+              td(style='width:11em') Status
+              td
+                if nameinfo.pending
+                  span.badge.badge-warning unconfirmed
+                  |  the newest operation is still in the mempool
+                else if expired
+                  span.badge.badge-danger expired
+                  |  since block #{nameinfo.expires_at}
+                  |  (#{blockcount - nameinfo.expires_at} blocks ago, about #{days} days)
+                  br
+                  small.text-muted This name is free: anyone can register it again.
+                else
+                  span.badge.badge-success registered
+                  |  until block #{nameinfo.expires_at}
+                  |  (#{left} blocks left, about #{days} days)
+                  br
+                  small.text-muted Every operation on the name renews it for #{nameinfo.expiration_depth} blocks.
+            if nameinfo.newest.op
+              tr
+                td Operation
+                td
+                  span.badge.badge-info #{nameinfo.newest.op}
+            if nameinfo.newest.value
+              tr
+                td Value
+                td
+                  pre(style='max-height:16em;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:0;padding:.5em;font-size:.9em') #{nameinfo.newest.value}
+            if nameinfo.newest.address
+              tr
+                td Held by
+                td
+                  a.loading(href='/address/' + nameinfo.newest.address) #{nameinfo.newest.address}
+            tr
+              td Transaction
+              td(style='word-wrap:break-word;')
+                a(href='/tx/' + nameinfo.newest.txid) #{nameinfo.newest.txid}
+            if nameinfo.newest.height > 0
+              tr
+                td Block
+                td
+                  if nameinfo.newest.blockhash
+                    a(href='/block/' + nameinfo.newest.blockhash) #{nameinfo.newest.height}
+                  else
+                    | #{nameinfo.newest.height}
+                  if nameinfo.newest.time
+                    |  &mdash; #{format_unixtime(nameinfo.newest.time)}
+
+    .card.card-default
+      .card-header
+        button.btn.btn-link(type='button', data-toggle='collapse', data-target='#name-history', aria-expanded='false', aria-controls='name-history', style='padding:0;')
+          span.fa.fa-history(aria-hidden='true')
+          |  History (#{nameinfo.total} operation#{nameinfo.total === 1 ? '' : 's'})
+      #name-history.collapse
+        div.table-responsive
+          table.table.table-bordered.table-striped.summary-table
+            thead
+              tr
+                th(style='width:8em') Block
+                th(style='width:9em') Operation
+                th Transaction
+            tbody
+              each e, i in nameinfo.entries
+                tr(class=(i === 0 ? 'table-success' : null))
+                  td
+                    if e.height > 0
+                      if e.blockhash
+                        a(href='/block/' + e.blockhash) #{e.height}
+                      else
+                        | #{e.height}
+                    else
+                      span.badge.badge-warning mempool
+                  td
+                    if e.op
+                      span.badge.badge-info #{e.op}
+                    else
+                      small.text-muted not loaded
+                  td(style='word-wrap:break-word;')
+                    a(href='/tx/' + e.txid) #{e.txid}
+                    if e.value
+                      br
+                      small.text-muted #{e.value.length > 120 ? e.value.slice(0, 120) + '…' : e.value}
+            if nameinfo.total > nameinfo.entries.filter(function (x) { return x.op; }).length
+              tfoot
+                tr
+                  td(colspan='3')
+                    small.text-muted Operations are loaded for the newest entries only; the rest are listed without theirs.
+    .footer-padding
