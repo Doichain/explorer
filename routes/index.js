@@ -287,8 +287,24 @@ function route_get_name(res, name) {
   });
 }
 
+// A found name gets its own URL in the address bar.
+//
+// The search is a POST, so rendering the result here would leave the browser on
+// /search: the page could not be linked, bookmarked or reloaded, and the share
+// button would be the only way to get the address. Redirecting to /name/<name>
+// costs one extra lookup and makes the result a real, shareable page.
+//
+// The redirect uses the RESOLVED name, which can differ from what was typed
+// when the match came from the Unicode-normalised form.
 function search_name(res, query) {
-  route_get_name(res, query);
+  names.lookup(query, function(err, hit) {
+    if (err) {
+      console.error('name lookup failed for "' + query + '": ' + err.message);
+      return route_get_index(res, locale.ex_search_error + query);
+    }
+    if (!hit) return route_get_index(res, locale.ex_search_error + query);
+    res.redirect('/name/' + hit.name.split('/').map(encodeURIComponent).join('/'));
+  });
 }
 
 router.post('/search', function(req, res) {
