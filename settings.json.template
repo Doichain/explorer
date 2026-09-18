@@ -66,7 +66,11 @@
     "enabled": true,
     "host": "127.0.0.1",
     "port": 50001,
-    "timeout": 8000
+    "timeout": 8000,
+    // how many history entries get their operation fetched (one call each)
+    "history_limit": 25,
+    // consensus: an operation at height h expires at h + this (mainnet 36000)
+    "name_expiration": 36000
   },
 
   // confirmations

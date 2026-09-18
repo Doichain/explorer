@@ -266,20 +266,45 @@ router.get('/address/:hash/:count', function(req, res) {
 //
 // If ElectrumX is unreachable the user sees the ordinary "not found" message:
 // a search box is the wrong place to report an infrastructure fault.
+// The name page: whether the name is still registered, what it holds, and every
+// operation that was ever made on it. Both the search box and /name/<name> come
+// through here, so the two cannot drift apart.
+//
+// It renders rather than redirecting to the transaction: expiry and history are
+// properties of the NAME, and a transaction page can only ever show the one
+// operation it carries.
 function route_get_name(res, name) {
   if (!name) return route_get_index(res, locale.ex_search_error + name);
-  names.lookup(name, function(err, hit) {
+  names.page(name, function(err, nameinfo) {
     if (err) {
       console.error('name lookup failed for "' + name + '": ' + err.message);
       return route_get_index(res, locale.ex_search_error + name);
     }
-    if (hit) return res.redirect('/tx/' + hit.txid);
-    route_get_index(res, locale.ex_search_error + name);
+    if (!nameinfo) return route_get_index(res, locale.ex_search_error + name);
+    lib.get_blockcount(function(blockcount) {
+      res.render('name', { active: 'name', nameinfo: nameinfo, blockcount: blockcount });
+    });
   });
 }
 
+// A found name gets its own URL in the address bar.
+//
+// The search is a POST, so rendering the result here would leave the browser on
+// /search: the page could not be linked, bookmarked or reloaded, and the share
+// button would be the only way to get the address. Redirecting to /name/<name>
+// costs one extra lookup and makes the result a real, shareable page.
+//
+// The redirect uses the RESOLVED name, which can differ from what was typed
+// when the match came from the Unicode-normalised form.
 function search_name(res, query) {
-  route_get_name(res, query);
+  names.lookup(query, function(err, hit) {
+    if (err) {
+      console.error('name lookup failed for "' + query + '": ' + err.message);
+      return route_get_index(res, locale.ex_search_error + query);
+    }
+    if (!hit) return route_get_index(res, locale.ex_search_error + query);
+    res.redirect('/name/' + hit.name.split('/').map(encodeURIComponent).join('/'));
+  });
 }
 
 router.post('/search', function(req, res) {
